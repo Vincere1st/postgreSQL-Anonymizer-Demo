@@ -16,19 +16,3 @@ ALTER DATABASE boutique
 \c boutique
 DROP TABLE IF EXISTS customer CASCADE;
 DROP TABLE IF EXISTS payout CASCADE;
-
-CREATE TABLE customer (
-    id SERIAL PRIMARY KEY,
-    firstname TEXT,
-    lastname TEXT,
-    phone TEXT,
-    birth DATE,
-    postcode TEXT
-);
-
-INSERT INTO customer
-VALUES
-(107,'Sarah','Conor','060-911-0911', '1965-10-10', '90016'),
-(258,'Luke', 'Skywalker', NULL, '1951-09-25', '90120'),
-(341,'Don', 'Draper','347-515-3423', '1926-06-01', '04520')
-;
