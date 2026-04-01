@@ -1,6 +1,6 @@
 services:
 
-  db1: 
+  db: 
     image: registry.gitlab.com/dalibo/postgresql_anonymizer:stable
     environment:
      POSTGRES_PASSWORD: postgres
@@ -9,3 +9,30 @@ services:
       - "55432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./api:/app
+    command: sh -c "npm install && node server.js"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:55432/boutique
+
+  slidev:
+    image: node:24-alpine
+    working_dir: /slidev
+    tty: true
+    stdin_open: true
+    user: 1000:1000
+    command: npm run dev
+    volumes:
+      - ./slides:/slidev
+    ports:
+      - "3030:3030"
+    depends_on:
+      - api
