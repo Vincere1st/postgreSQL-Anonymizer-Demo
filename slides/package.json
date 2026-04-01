@@ -1,7 +1,7 @@
 {
   "name": "slides",
   "scripts": {
-    "dev": "slidev -- --host"
+    "dev": "slidev --remote"
   },
   "dependencies": {
     "@slidev/cli": "^52.14.1",

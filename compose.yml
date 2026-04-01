@@ -29,6 +29,7 @@ services:
     tty: true
     stdin_open: true
     user: 1000:1000
+    command: npm run dev
     volumes:
       - ./slides:/slidev
     ports:
