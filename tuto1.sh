@@ -7,20 +7,9 @@ run_command() {
     docker compose exec -i db1 psql -U postgres -d boutique -c "$2"
 }
 
-run_command "Création de la table des clients" "CREATE TABLE customer (
-    id SERIAL PRIMARY KEY,
-    firstname TEXT,
-    lastname TEXT,
-    phone TEXT,
-    birth DATE,
-    postcode TEXT
-);"
+run_command "Création de la table des clients" "CREATE TABLE customer (id SERIAL PRIMARY KEY, firstname TEXT, lastname TEXT, phone TEXT, birth DATE,postcode TEXT);"
 
-run_command "Insertion des clients dans la base boutique" "INSERT INTO customer VALUES 
-    (107,'Sarah','Conor','060-911-0911', '1965-10-10', '90016'),
-    (258,'Luke', 'Skywalker', NULL, '1951-09-25', '90120'),
-    (341,'Don', 'Draper','347-515-3423', '1926-06-01', '04520')
-;"
+run_command "Insertion des clients dans la base boutique" "INSERT INTO customer VALUES (107,'Sarah','Conor','060-911-0911', '1965-10-10', '90016'),(258,'Luke', 'Skywalker', NULL, '1951-09-25', '90120'),(341,'Don', 'Draper','347-515-3423', '1926-06-01', '04520');"
 
 run_command "Création de la table Payout" "CREATE TABLE payout (
     id SERIAL PRIMARY KEY,
