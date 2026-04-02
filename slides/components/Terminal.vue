@@ -1,7 +1,10 @@
 <template>
   <div class="terminal">
     <div class="terminal-output" ref="output">
-      <div v-for="(line, index) in lines" :key="index" v-html="line"></div>
+      <div v-for="(line, index) in lines" :key="index">
+        <TerminalContent v-if="line.type" :content="line.content" :content-type="line.type"></TerminalContent>
+        <span v-else v-html="line"></span>
+      </div>
     </div>
     <div class="terminal-input">
       <span class="prompt">$</span>
@@ -17,21 +20,42 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, computed } from 'vue';
 import { useApi } from '../composables/useApi';
+import TerminalContent from './TerminalContent.vue';
 
 const { executeQuery, loading, error, response } = useApi();
+
+const props = defineProps({
+  height: {
+    type: Number,
+    default: '500'
+  },
+  width: {
+    type: String,
+    default: '100%'
+  },
+  user: {
+    type: String,
+    default: 'postgres'
+  },
+  password: {
+    type: String,
+    default: 'postgres'
+  }
+});
+
 
 // État réactif
 const lines = ref(['Bienvenue dans le terminal SQL. Tapez "help" pour voir les commandes disponibles.']);
 const currentCommand = ref('');
 const commandHistory = ref([]);
 const historyIndex = ref(-1);
-const currentUser = ref('postgres');
-const currentPassword = ref('postgres');
+const currentUser = ref(props.user);
+const currentPassword = ref(props.password);
 const output = ref(null);
 const input = ref(null);
-const commandAvailableList = ['help', 'user', 'pass', 'clear'];
+const commandAvailableList = new Set(['help', 'user', 'pass', 'clear']);
 
 // Méthodes
 const executeCommand = async () => {
@@ -45,36 +69,13 @@ const executeCommand = async () => {
   
   currentCommand.value = '';
   
-  if (commandAvailableList.includes(command)) {
+  if (commandAvailableList.has(command)) {
     commandManager(command)
   } else {
     // Si ce n'est pas une commande spéciale, essayer de l'exécuter comme requête SQL
-    try {
-      const result = await executeQuery(command, 'POST', {
-        user: currentUser.value,
-        password: currentPassword.value
-      });
-      
-      if (result.success) {
-        lines.value.push('<span class="success">✓ Requête exécutée avec succès</span>');
-        
-        if (result.rowCount !== undefined) {
-          lines.value.push(`<span class="info">Lignes affectées: ${result.rowCount}</span>`);
-        }
-        
-        if (result.results && result.results.length > 0) {
-          const tableHtml = formatResultsAsTable(result.results, result.fields);
-          lines.value.push(tableHtml);
-        }
-      } else {
-        lines.value.push('<span class="error">✗ Erreur: ' + result.error + '</span>');
-      }
-    } catch (err) {
-      lines.value.push('<span class="error">✗ Erreur: ' + (err.message || 'Erreur inconnue') + '</span>');
-    }
+    await executeQuerySql(command)
   }
-
-  await nextTick();
+    await nextTick();
   if (output.value) {
     output.value.scrollTop = output.value.scrollHeight;
   }
@@ -131,6 +132,32 @@ const handleKeyUp = (event) => {
     }
   }
 };
+
+const executeQuerySql = async (query) => {
+    try {
+      const result = await executeQuery(query, 'POST', {
+        user: currentUser.value,
+        password: currentPassword.value
+      });
+      
+      if (result.success) {
+        lines.value.push({ type: 'success', content: '✓ Requête exécutée avec succès'});
+        
+        if (result.rowCount !== undefined) {
+          lines.value.push({ type: 'info', content: `Lignes affectées: ${result.rowCount}`});
+        }
+        
+        if (result.results && result.results.length > 0) {
+          const tableHtml = `<div class="result-table-wrapper">${formatResultsAsTable(result.results, result.fields)}</div>`;
+          lines.value.push(tableHtml);
+        }
+      } else {
+        lines.value.push({ type: 'error', content: '✗ Erreur: ' + result.error });
+      }
+    } catch (err) {
+      lines.value.push({ type: 'error', content: '✗ Erreur: ' + (err.message || 'Erreur inconnue')});
+    }
+}
 
 const addToHistory = (command) => {
   if (command && command.trim() && 
@@ -191,12 +218,13 @@ onMounted(() => {
   background-color: #1e1e1e;
   color: #e0e0e0;
   font-family: 'Courier New', monospace;
-  height: 500px;
-  width: 800px;
+  height: v-bind('`${height}px`');
+  width: v-bind('`${width}%`');
   border-radius: 5px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .terminal-output {
@@ -229,36 +257,65 @@ input {
   outline: none;
 }
 
-.success {
-  color: #4CAF50;
-}
-
-.error {
-  color: #F44336;
-}
-
-.info {
-  color: #2196F3;
-}
-
 .result-table {
   border-collapse: collapse;
   width: 100%;
-  margin: 10px 0;
+  margin: 0;
+  border: none;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.result-table-wrapper {
+  overflow: auto;
+  max-width: 100%;
+  margin: 8px 0;
   border: 1px solid #444;
+  border-radius: 4px;
+  max-height: 100%;
+}
+
+.result-table th,
+.result-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #333;
+  border-right: 1px solid #222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-table th {
-  background-color: #333;
-  color: #fff;
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid #444;
+  background-color: #2a2a2a;
+  color: #bbb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  font-weight: normal;
 }
 
 .result-table td {
-  padding: 8px;
-  border-bottom: 1px solid #444;
+  max-width: 150px;
+  min-width: 50px;
+  width: 1%;
+}
+
+.result-table tr:hover {
+  background-color: #252525;
+}
+
+.result-table th:last-child,
+.result-table td:last-child {
+  border-right: none;
+}
+
+/* Style pour les lignes paires/impaires */
+.result-table tr:nth-child(even) {
+  background-color: #1a1a1a;
+}
+
+.result-table tr:nth-child(odd) {
+  background-color: #1e1e1e;
 }
 
 .result-table tr:hover {
