@@ -10,3 +10,11 @@ src: ./slides/slide1.md
 ---
 src:  ./slides/slide2.md
 ---
+
+---
+src:  ./slides/slide3.md
+---
+
+---
+src:  ./slides/slide4.md
+---
