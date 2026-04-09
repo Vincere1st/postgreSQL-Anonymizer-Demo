@@ -1,26 +1,36 @@
 <template>
-  <div class="terminal">
-    <div class="terminal-output" ref="output">
-      <div v-for="(line, index) in lines" :key="index">
-        <TerminalContent v-if="line.type" :content="line.content" :content-type="line.type"></TerminalContent>
-        <span v-else v-html="line"></span>
-      </div>
+  <div class="terminal-container">
+    <div class="user-selector">
+      <label for="user-select">Utilisateur:</label>
+      <select id="user-select" v-model="currentUser" @change="onUserChange">
+        <option v-for="user in availableUsers" :key="user" :value="user">
+          {{ user }}
+        </option>
+      </select>
     </div>
-    <div class="terminal-input">
-      <span class="prompt">$</span>
-      <input 
-        v-model="currentCommand" 
-        @keyup.enter="executeCommand" 
-        @keyup="handleKeyUp" 
-        autofocus 
-        ref="input"
-      />
+    <div class="terminal">
+      <div class="terminal-output" ref="output">
+        <div v-for="(line, index) in lines" :key="index">
+          <TerminalContent v-if="line.type" :content="line.content" :content-type="line.type" />
+          <span v-else v-html="line"></span>
+        </div>
+      </div>
+      <div class="terminal-input">
+        <span class="prompt">$</span>
+        <input 
+          v-model="currentCommand" 
+          @keyup.enter="executeCommand" 
+          @keyup="handleKeyUp" 
+          autofocus 
+          ref="input"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { useApi } from '../composables/useApi';
 import TerminalContent from './TerminalContent.vue';
 
@@ -29,11 +39,15 @@ const { executeQuery, loading, error, response } = useApi();
 const props = defineProps({
   height: {
     type: Number,
-    default: '500'
+    default: 400
   },
   width: {
     type: String,
     default: '100%'
+  },
+  compact: {
+    type: Boolean,
+    default: false
   },
   user: {
     type: String,
@@ -55,7 +69,8 @@ const currentUser = ref(props.user);
 const currentPassword = ref(props.password);
 const output = ref(null);
 const input = ref(null);
-const commandAvailableList = new Set(['help', 'user', 'pass', 'clear']);
+const commandAvailableList = new Set(['help', 'user', 'pass', 'clear', 'users']);
+const availableUsers = ref(['postgres', 'paul', 'pierre', 'jack']);
 
 // Méthodes
 const executeCommand = async () => {
@@ -81,6 +96,10 @@ const executeCommand = async () => {
   }
 };
 
+const onUserChange = () => {
+    lines.value.push(`<span class="system-message">Utilisateur changé pour: ${currentUser.value}</span>`);
+};
+
 const commandManager = (command) => {
     if (command === 'help') {
         showHelp()
@@ -90,11 +109,14 @@ const commandManager = (command) => {
     }
     else if (command.startsWith('user ')) {
         currentUser.value = command.substring(5);
-        lines.value.push(`Utilisateur changé pour: ${currentUser.value}`);
+        lines.value.push(`<span class="system-message">Utilisateur changé pour: ${currentUser.value}</span>`);
     }
     else if (command.startsWith('pass ')) {
         currentPassword.value = command.substring(5);
-        lines.value.push('Mot de passe changé');
+        lines.value.push('<span class="system-message">Mot de passe changé</span>');
+    }
+    else if (command === 'users') {
+        showUsers()
     }
 }
 
@@ -104,8 +126,18 @@ lines.value.push(
         '- help: Affiche cette aide',
         '- user [utilisateur]: Change l\'utilisateur de connexion',
         '- pass [motdepasse]: Change le mot de passe',
+        '- users: Affiche la liste des utilisateurs disponibles',
         '- clear: Efface le terminal',
         '- Flèches haut/bas: Navigue dans l\'historique des commandes'
+    );
+}
+
+const showUsers = () => {
+    lines.value.push(
+        '<span class="system-message">Utilisateurs disponibles:</span>',
+        '<span class="system-message">- paul</span>',
+        '<span class="system-message">- pierre</span>',
+        '<span class="system-message">- jack</span>'
     );
 }
 const handleKeyUp = (event) => {
@@ -214,13 +246,46 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  width: v-bind('`${width}%`');
+}
+
+.user-selector {
+  background-color: #252525;
+  color: #e0e0e0;
+  padding: 8px 10px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: v-bind('compact ? "10px" : "12px"');
+}
+
+.user-selector label {
+  margin-right: 10px;
+}
+
+.user-selector select {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 3px 5px;
+  font-family: 'Courier New', monospace;
+  font-size: v-bind('compact ? "10px" : "12px"');
+  outline: none;
+}
+
 .terminal {
   background-color: #1e1e1e;
   color: #e0e0e0;
   font-family: 'Courier New', monospace;
+  font-size: v-bind('compact ? "10px" : "12px"');
   height: v-bind('`${height}px`');
-  width: v-bind('`${width}%`');
-  border-radius: 5px;
+  width: 100%;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -235,6 +300,11 @@ onMounted(() => {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+}
+
+.system-message {
+  color: #4CAF50;
+  font-style: italic;
 }
 
 .terminal-input {
@@ -254,6 +324,7 @@ input {
   border: none;
   color: #e0e0e0;
   font-family: 'Courier New', monospace;
+  font-size: v-bind('compact ? "10px" : "12px"');
   outline: none;
 }
 
@@ -263,7 +334,7 @@ input {
   margin: 0;
   border: none;
   table-layout: fixed;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .result-table-wrapper {

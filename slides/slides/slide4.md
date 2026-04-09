@@ -2,5 +2,13 @@
 
 ## Installation
 
+- `ALTER DATABASE boutique SET session_preload_libraries = 'anon';`
+
+- **Utilisation** : `SELECT anon.mask('email', email) FROM customer;`
+
 Via le terminal
-<Terminal width="50" height="300" />
+
+<div style="display: flex; gap: 10px;">
+  <Terminal width="50" height="300" compact />
+  <Terminal width="50" height="300" compact />
+</div>
