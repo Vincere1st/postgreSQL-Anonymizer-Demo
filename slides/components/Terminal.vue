@@ -1,28 +1,35 @@
 <template>
-  <div class="terminal-container">
-    <div class="user-selector">
-      <label for="user-select">Utilisateur:</label>
-      <select id="user-select" v-model="currentUser" @change="onUserChange">
-        <option v-for="user in availableUsers" :key="user" :value="user">
-          {{ user }}
+  <div :class="['flex', 'flex-col', compact ? 'compact' : '']" style="width: 100%; max-width: 100%;">
+    <div class="user-selector bg-gray-800 text-gray-200 px-2 py-1 rounded-t-md flex items-center gap-2 font-mono">
+      <label for="user-select" class="cursor-pointer">Utilisateur:</label>
+      <select 
+        id="user-select" 
+        v-model="currentUser" 
+        @change="onUserChange" 
+        class="bg-transparent text-gray-200 border-none outline-none appearance-none cursor-pointer w-full py-1"
+      >
+        <option v-for="availableUser in availableUsers" :key="availableUser" :value="availableUser.user">
+          {{ availableUser.user }}
         </option>
       </select>
     </div>
-    <div class="terminal">
-      <div class="terminal-output" ref="output">
+    <div :class="['bg-gray-700', 'text-gray-200', 'font-mono', 'w-full', 'rounded-b-md', 'overflow-hidden', 'flex', 'flex-col']" :style="{ height: `${height}px`, width: '100%', 'max-width': '100%' }">
+      <div class="flex-1 overflow-y-auto p-2 w-full" ref="output">
         <div v-for="(line, index) in lines" :key="index">
-          <TerminalContent v-if="line.type" :content="line.content" :content-type="line.type" />
-          <span v-else v-html="line"></span>
+          <TerminalContent v-if="line.type === 'content'" :content="line.content" :content-type="line.contentType" />
+          <TerminalTable v-else-if="line.type === 'table'" :results="line.results" :fields="line.fields" />
+          <TerminalMessage v-else :type="line.type" :content="line.message" />
         </div>
       </div>
-      <div class="terminal-input">
-        <span class="prompt">$</span>
+      <div class="terminal-input-container flex items-center p-2 bg-gray-800 font-mono">
+        <span class="text-green-400 mr-2">$</span>
         <input 
           v-model="currentCommand" 
           @keyup.enter="executeCommand" 
           @keyup="handleKeyUp" 
           autofocus 
           ref="input"
+          class="flex-1 bg-transparent border-none text-gray-200 font-mono outline-none cursor-text"
         />
       </div>
     </div>
@@ -33,17 +40,15 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { useApi } from '../composables/useApi';
 import TerminalContent from './TerminalContent.vue';
+import TerminalMessage from './TerminalMessage.vue';
+import TerminalTable from './TerminalTable.vue';
 
-const { executeQuery, loading, error, response } = useApi();
+const { executeQuery } = useApi();
 
 const props = defineProps({
   height: {
     type: Number,
     default: 400
-  },
-  width: {
-    type: String,
-    default: '100%'
   },
   compact: {
     type: Boolean,
@@ -61,23 +66,32 @@ const props = defineProps({
 
 
 // État réactif
-const lines = ref(['Bienvenue dans le terminal SQL. Tapez "help" pour voir les commandes disponibles.']);
+const lines = ref([
+  { type: 'default', message: 'Bienvenue dans le terminal SQL.' },
+  { type: 'info', message: 'Tapez "help" pour voir les commandes disponibles.' }
+]);
 const currentCommand = ref('');
 const commandHistory = ref([]);
 const historyIndex = ref(-1);
 const currentUser = ref(props.user);
-const currentPassword = ref(props.password);
+const currentPassword = ref(props.user === 'postgres' ? props.password : 'CHANGEME');
 const output = ref(null);
 const input = ref(null);
 const commandAvailableList = new Set(['help', 'user', 'pass', 'clear', 'users']);
-const availableUsers = ref(['postgres', 'paul', 'pierre', 'jack']);
+const availableUsers = ref([
+  { user: 'postgres', password: 'postgres'},
+  { user: 'paul', password: 'CHANGEME' },
+  { user: 'pierre', password: 'CHANGEME' },
+  { user: 'jack', password : 'CHANGEME'}]);
+
+
 
 // Méthodes
 const executeCommand = async () => {
   const command = currentCommand.value.trim();
   if (!command) return;
 
-  lines.value.push(`<span class="prompt">$</span> ${command}`);
+  lines.value.push({ type: 'default', message: `$ ${command}` });
   
   // Ajouter à l'historique avant d'exécuter
   addToHistory(command);
@@ -97,7 +111,13 @@ const executeCommand = async () => {
 };
 
 const onUserChange = () => {
-    lines.value.push(`<span class="system-message">Utilisateur changé pour: ${currentUser.value}</span>`);
+    lines.value.push({ type: 'system', message: `Utilisateur changé pour: ${currentUser.value}` });
+    availableUsers.value.forEach((availableUser) => {
+      if (availableUser.user === currentUser.value) {
+        currentPassword.value = availableUser.password
+      }
+    })
+    console.log({password: currentPassword.value})
 };
 
 const commandManager = (command) => {
@@ -113,7 +133,7 @@ const commandManager = (command) => {
     }
     else if (command.startsWith('pass ')) {
         currentPassword.value = command.substring(5);
-        lines.value.push('<span class="system-message">Mot de passe changé</span>');
+        lines.value.push({ type: 'system', message: 'Mot de passe changé' });
     }
     else if (command === 'users') {
         showUsers()
@@ -122,22 +142,22 @@ const commandManager = (command) => {
 
 const showHelp = () => {
 lines.value.push(
-        'Commandes disponibles:',
-        '- help: Affiche cette aide',
-        '- user [utilisateur]: Change l\'utilisateur de connexion',
-        '- pass [motdepasse]: Change le mot de passe',
-        '- users: Affiche la liste des utilisateurs disponibles',
-        '- clear: Efface le terminal',
-        '- Flèches haut/bas: Navigue dans l\'historique des commandes'
+        { type: 'success', message: 'Commandes disponibles:' },
+        { type: 'info', message: '- help: Affiche cette aide' },
+        { type: 'info', message: '- user [utilisateur]: Change l\'utilisateur de connexion' },
+        { type: 'info', message: '- pass [motdepasse]: Change le mot de passe' },
+        { type: 'info', message: '- users: Affiche la liste des utilisateurs disponibles' },
+        { type: 'info', message: '- clear: Efface le terminal' },
+        { type: 'info', message: '- Flèches haut/bas: Navigue dans l\'historique des commandes' }
     );
 }
 
 const showUsers = () => {
     lines.value.push(
-        '<span class="system-message">Utilisateurs disponibles:</span>',
-        '<span class="system-message">- paul</span>',
-        '<span class="system-message">- pierre</span>',
-        '<span class="system-message">- jack</span>'
+        { type: 'success', message: 'Utilisateurs disponibles:' },
+        { type: 'info', message: '- paul' },
+        { type: 'info', message: '- pierre' },
+        { type: 'info', message: '- jack' }
     );
 }
 const handleKeyUp = (event) => {
@@ -173,21 +193,24 @@ const executeQuerySql = async (query) => {
       });
       
       if (result.success) {
-        lines.value.push({ type: 'success', content: '✓ Requête exécutée avec succès'});
+        lines.value.push({ type: 'success', message: '✓ Requête exécutée avec succès' });
         
         if (result.rowCount !== undefined) {
-          lines.value.push({ type: 'info', content: `Lignes affectées: ${result.rowCount}`});
+          lines.value.push({ type: 'info', message: `Lignes affectées: ${result.rowCount}` });
         }
         
         if (result.results && result.results.length > 0) {
-          const tableHtml = `<div class="result-table-wrapper">${formatResultsAsTable(result.results, result.fields)}</div>`;
-          lines.value.push(tableHtml);
+          lines.value.push({ 
+            type: 'table', 
+            results: result.results, 
+            fields: result.fields 
+          });
         }
       } else {
-        lines.value.push({ type: 'error', content: '✗ Erreur: ' + result.error });
+        lines.value.push({ type: 'error', message: `✗ Erreur: ${result.error}` });
       }
     } catch (err) {
-      lines.value.push({ type: 'error', content: '✗ Erreur: ' + (err.message || 'Erreur inconnue')});
+      lines.value.push({ type: 'error', message: `✗ Erreur: ${err.message || 'Erreur inconnue'}` });
     }
 }
 
@@ -208,35 +231,7 @@ const addToHistory = (command) => {
   }
 };
 
-const formatResultsAsTable = (results, fields) => {
-  let html = '<table class="result-table">';
-  
-  // Header
-  html += '<thead><tr>';
-  if (fields && fields.length) {
-    fields.forEach(field => {
-      html += `<th>${field}</th>`;
-    });
-  } else if (results.length > 0) {
-    Object.keys(results[0]).forEach(key => {
-      html += `<th>${key}</th>`;
-    });
-  }
-  html += '</tr></thead>';
-  
-  // Body
-  html += '<tbody>';
-  results.forEach(row => {
-    html += '<tr>';
-    Object.values(row).forEach(value => {
-      html += `<td>${value}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  
-  return html;
-};
+
 
 onMounted(() => {
   if (input.value) {
@@ -246,150 +241,48 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Styles pour le terminal qui nécessitent des bindings dynamiques */
 .terminal-container {
-  display: flex;
-  flex-direction: column;
-  width: v-bind('`${width}%`');
-}
-
-.user-selector {
-  background-color: #252525;
-  color: #e0e0e0;
-  padding: 8px 10px;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
-  font-family: 'Courier New', monospace;
-  font-size: v-bind('compact ? "10px" : "12px"');
-}
-
-.user-selector label {
-  margin-right: 10px;
-}
-
-.user-selector select {
-  background-color: #1e1e1e;
-  color: #e0e0e0;
-  border: 1px solid #444;
-  border-radius: 3px;
-  padding: 3px 5px;
-  font-family: 'Courier New', monospace;
-  font-size: v-bind('compact ? "10px" : "12px"');
-  outline: none;
+  width: 100%;
 }
 
 .terminal {
-  background-color: #1e1e1e;
-  color: #e0e0e0;
-  font-family: 'Courier New', monospace;
-  font-size: v-bind('compact ? "10px" : "12px"');
   height: v-bind('`${height}px`');
-  width: 100%;
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
 }
 
-.terminal-output {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-  user-select: text; /* Permet la sélection de texte */
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-}
-
-.system-message {
-  color: #4CAF50;
-  font-style: italic;
-}
-
-.terminal-input {
-  display: flex;
-  padding: 10px;
-  background-color: #252525;
-}
-
-.prompt {
-  margin-right: 10px;
-  color: #4CAF50;
-}
-
-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #e0e0e0;
-  font-family: 'Courier New', monospace;
-  font-size: v-bind('compact ? "10px" : "12px"');
-  outline: none;
-}
-
-.result-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0;
-  border: none;
-  table-layout: fixed;
+/* Style pour le font-size dynamique basé sur le mode compact */
+.compact .terminal, .compact input, .compact label, .compact select, .compact .terminal-message, .compact .terminal-table {
   font-size: 10px;
 }
 
-.result-table-wrapper {
-  overflow: auto;
-  max-width: 100%;
-  margin: 8px 0;
-  border: 1px solid #444;
-  border-radius: 4px;
-  max-height: 100%;
+:not(.compact) .terminal, :not(.compact) input, :not(.compact) label, :not(.compact) select, :not(.compact) .terminal-message, :not(.compact) .terminal-table {
+  font-size: 12px;
 }
 
-.result-table th,
-.result-table td {
-  padding: 4px 6px;
-  border-bottom: 1px solid #333;
-  border-right: 1px solid #222;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Style personnalisé pour le dropdown du select */
+.user-selector select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  padding-right: 1rem;
+  cursor: pointer;
 }
 
-.result-table th {
-  background-color: #2a2a2a;
-  color: #bbb;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  font-weight: normal;
-}
-
-.result-table td {
-  max-width: 150px;
-  min-width: 50px;
-  width: 1%;
-}
-
-.result-table tr:hover {
+.user-selector select option {
   background-color: #252525;
+  color: #e0e0e0;
 }
 
-.result-table th:last-child,
-.result-table td:last-child {
-  border-right: none;
+/* Style pour la zone de saisie */
+.terminal-input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
-/* Style pour les lignes paires/impaires */
-.result-table tr:nth-child(even) {
-  background-color: #1a1a1a;
-}
-
-.result-table tr:nth-child(odd) {
-  background-color: #1e1e1e;
-}
-
-.result-table tr:hover {
-  background-color: #2a2a2a;
+.terminal-input-container input {
+  flex: 1;
+  cursor: text;
 }
 </style>

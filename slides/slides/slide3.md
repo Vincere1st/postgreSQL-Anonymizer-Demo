@@ -2,8 +2,9 @@
 
 ### Installation
 
-PostgreSQL Anonymizer est une extension PostgreSQL qui peut être installée sur n'importe quelle base de données PostgreSQL.
-Différente installation existe, selon l'os utilisé. Lien vers la doc d'installation: https://postgresql-anonymizer.readthedocs.io/en/stable/INSTALL/
+Différente méthode d'installation existe, selon l'os utilisé.
+
+Lien vers la doc d'installation: https://postgresql-anonymizer.readthedocs.io/en/stable/INSTALL/
 
 - `CREATE EXTENSION anon;`
 
