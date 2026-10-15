@@ -1,14 +1,10 @@
-<img src="../images/PostgreSQL-Anonymizer_H_couleur.png" alt="PostgreSQL Anonymizer" width="150" height="100" class="float-end">
+## Pourquoi dans la base ?
 
-### Installation
+- **Privacy by Design** : les règles vivent dans le schéma, versionnées avec lui
+- Le développeur connaît le besoin métier, il écrit la règle
+- Pas d'outil externe : moins de copies de données qui traînent
 
-Différente méthode d'installation existe, selon l'os utilisé.
-
-Lien vers la doc d'installation: https://postgresql-anonymizer.readthedocs.io/en/stable/INSTALL/
-
-- `CREATE EXTENSION anon;`
-
-- `SELECT anon.init();`
-
-- `ALTER DATABASE foo SET session_preload_libraries = 'anon';`
-
+<!--
+Sans l'extension, on copie la prod puis un script externe nettoie. Entre-temps, une copie complète existe quelque part.
+Ici la règle est déclarée une fois et appliquée à chaque usage (accès, dump, réplica).
+-->

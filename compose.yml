@@ -1,33 +1,18 @@
 services:
 
-  db: 
+  db:
     image: registry.gitlab.com/dalibo/postgresql_anonymizer:stable
     environment:
-     POSTGRES_PASSWORD: postgres
-     POSTGRES_USER: postgres
-    networks:
-      - postgresql_anonymizer
-    ports:
-      - "55432:5432"
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "wal_level=logical"]   # pour la demo replica
+    ports: ["5432:5432"]
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
-  api:
-    image: node:24-alpine
-    working_dir: /app
-    volumes:
-      - ./api:/app
-    tty: true
-    command: npm run dev
-    networks:
-      - postgresql_anonymizer
-    ports:
-      - "3000:3000"
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:55432/boutique
-
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./reset.sql:/reset.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U postgres -d boutique -tc 'select 1'"]
+      interval: 3s
+      retries: 20
   slidev:
     image: node:24-alpine
     working_dir: /slidev
@@ -41,8 +26,6 @@ services:
       - postgresql_anonymizer
     ports:
       - "3030:3030"
-    depends_on:
-      - api
 
 networks:
   postgresql_anonymizer:

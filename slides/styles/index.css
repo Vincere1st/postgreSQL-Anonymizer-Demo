@@ -1,0 +1,9 @@
+.slidev-note pre:has(> code:is(.language-bash, .language-sql)) {
+  background: #000 !important;
+}
+
+.slidev-note pre > code:is(.language-bash, .language-sql),
+.slidev-note pre > code:is(.language-bash, .language-sql) * {
+  background: #000 !important;
+  color: #fff !important;
+}
