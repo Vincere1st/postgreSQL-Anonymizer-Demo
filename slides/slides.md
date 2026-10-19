@@ -36,6 +36,10 @@ src:  ./slides/slide9.md
 ---
 
 ---
+src:  ./slides/slide9-oups.md
+---
+
+---
 src:  ./slides/slide10.md
 ---
 
@@ -48,7 +52,6 @@ src:  ./slides/slide12.md
 ---
 
 ---
-
 src:  ./slides/slide13.md
 ---
 

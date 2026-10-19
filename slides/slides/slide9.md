@@ -7,9 +7,6 @@ Les données sont **remplacées définitivement**.
 SELECT anon.anonymize_table('customer');
 ```
 
-⚠️ Destructif : à faire sur une copie, jamais sur la prod.
-
-<iframe src="https://giphy.com/embed/jUwpNzg9IcyrK" width="480" height="360" style="" frameBorder="0" class="giphy-embed" allowFullScreen></iframe><p><a href="https://giphy.com/gifs/the-simpsons-scared-homer-simpson-jUwpNzg9IcyrK">via GIPHY</a></p>
 <!--
 Cas : Paul archive son ancienne base et retire les données personnelles.
 

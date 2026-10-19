@@ -9,3 +9,6 @@ watch:
 	docker compose up -d --remove-orphans && \
 	docker compose run --rm api npm run dev &
 	docker compose run --rm slidev npm run dev
+
+reset:
+	docker compose exec db psql -U postgres -d postgres -f /reset.sql
